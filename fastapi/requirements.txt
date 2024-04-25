@@ -1,3 +1,5 @@
 fastapi
 uvicorn[standard]
 python-socketio
+sqlalchemy
+psycopg2-binary
