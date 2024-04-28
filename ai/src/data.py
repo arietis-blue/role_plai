@@ -2,7 +2,7 @@ from pydantic import BaseModel, field_serializer
 from openai import OpenAI
 from pathlib import Path
 import random
-from typing import Literal, Optional, Generator, Self
+from typing import Literal, Generator, Self
 from enum import Enum
 import uuid
 from loguru import logger
