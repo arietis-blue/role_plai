@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 import json
 import numpy as np
 import functools
+from tqdm import tqdm
 
 load_dotenv()
 
@@ -74,7 +75,7 @@ class Reply(BaseModel):
             return ''
         elif isinstance(parent, str):
             return parent
-        elif isinstance(parent, Self):
+        elif isinstance(parent, Reply):
             return parent.id
         else:
             raise ValueError(f"parent is not str or Reply: {parent}")
@@ -192,11 +193,12 @@ def vectorize(text: str, fake=False) -> list[float]:
 def generate_reply_tree(path: Path, start: str, size: int = 100) -> Reply:
     root = Reply.generate_root(start)
     nodes: list[Reply] = [root]
-    while (i:=len(nodes)) < size:
-        logger.info(f"Generating {i}/{size}")
-        node = random.choice(nodes)
-        reply = node.generate_next()
-        nodes.append(reply)
+    with tqdm(total=size) as pbar:
+        while len(nodes) < size:
+            pbar.update(1)
+            node = random.choice(nodes)
+            reply = node.generate_next()
+            nodes.append(reply)
     
     s = root.model_dump_json()
     with open(path, '+w') as f:
