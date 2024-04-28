@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "ai"
+version = "0.1.0"
+description = ""
+authors = ["gyuta <kuroshiba0408@gmail.com>"]
+readme = "README.md"
+packages = [
+    { include = "*", from = "src" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+loguru = "^0.7.2"
+openai = "^1.23.6"
+pydantic = "^2.7.1"
+python-dotenv = "^1.0.1"
+numpy = "^1.26.4"
+fire = "^0.6.0"
+tqdm = "^4.66.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
