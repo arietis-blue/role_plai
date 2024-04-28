@@ -16,23 +16,6 @@ load_dotenv()
 
 client = OpenAI()
 
-start_words = [
-    '自己紹介をしてください',
-    '好きな技術について教えてください',
-    'あなたの強みについて教えてください',
-    'あなたの弱みについて教えてください',
-    'これまでチームで成し遂げた経験について教えてください',
-    'これまでの失敗について教えてください',
-    'どのようなチームで働きたいですか',
-    'どのような技術を学びたいですか',
-    'どのようなプロジェクトに参加したいですか',
-    'どのような軸で就職活動をしていますか',
-    '将来のキャリアプランについて教えてください',
-    'なぜエンジニアになりたいのですか',
-    'なぜ当社に入社したいですか',
-    '今一番注目している技術について教えてください',
-]
-
 class Chara(Enum):
     CANDIDATE = "candidate"
     INTERVIEWER = "interviewer"
@@ -169,7 +152,7 @@ class Reply(BaseModel):
     
 
     @staticmethod
-    def load(path: Path) -> Self:
+    def load(path: Path) -> "Reply":
         with open(path, 'r') as f:
             j = json.load(f)
 
@@ -193,7 +176,7 @@ def vectorize(text: str, fake=False) -> list[float]:
 def generate_reply_tree(path: Path, start: str, size: int = 100) -> Reply:
     root = Reply.generate_root(start)
     nodes: list[Reply] = [root]
-    with tqdm(total=size) as pbar:
+    with tqdm(total=size-1) as pbar:
         while len(nodes) < size:
             pbar.update(1)
             node = random.choice(nodes)
@@ -206,6 +189,24 @@ def generate_reply_tree(path: Path, start: str, size: int = 100) -> Reply:
     return root
 
 if __name__ == '__main__':
+
+    start_words = [
+        '自己紹介をしてください',
+        '好きな技術について教えてください',
+        'あなたの強みについて教えてください',
+        'あなたの弱みについて教えてください',
+        'これまでチームで成し遂げた経験について教えてください',
+        'これまでの失敗について教えてください',
+        'どのようなチームで働きたいですか',
+        'どのような技術を学びたいですか',
+        'どのようなプロジェクトに参加したいですか',
+        'どのような軸で就職活動をしていますか',
+        '将来のキャリアプランについて教えてください',
+        'なぜエンジニアになりたいのですか',
+        'なぜ当社に入社したいですか',
+        '今一番注目している技術について教えてください',
+    ]
+
     # データ生成
     # root = generate_reply_tree(Path("sample2.json"), random.choice(start_words), size=3)
     # root.debug()
