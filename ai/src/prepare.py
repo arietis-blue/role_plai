@@ -2,11 +2,14 @@ from pydantic import BaseModel, field_serializer
 from openai import OpenAI
 from pathlib import Path
 import random
-from typing import Literal, Optional
+from typing import Literal, Optional, Generator, Self
 from enum import Enum
 import uuid
 from loguru import logger
 from dotenv import load_dotenv
+import json
+import numpy as np
+import functools
 
 load_dotenv()
 
@@ -56,27 +59,40 @@ class Chara(Enum):
 
 
 class Reply(BaseModel):
-    parent: Optional["Reply"]
+    parent: Self | str | None
     chara: Chara
     id: str
     comment: str
     comment_vector: list[float]
-    children: list["Reply"]
+    children: list[Self]
 
     @field_serializer('parent')
-    def serialize_dt(self, parent, _info):
+    def serialize_parent(self, parent: Self | str | None):
+        """ 循環参照を避けるために、parentをidに変換して保存する
+        """
         if parent is None:
             return ''
-        return parent.id
+        elif isinstance(parent, str):
+            return parent
+        elif isinstance(parent, Self):
+            return parent.id
+        else:
+            raise ValueError(f"parent is not str or Reply: {parent}")
+    
+    def __str__(self):
+        return f'{self.chara.ja}: {self.comment}'
+    
+    def __repr__(self):
+        return str(self)
     
     @property
     def is_root(self) -> bool:
         return self.parent is None
 
-    def from_root(self) -> list["Reply"]:
+    def from_root(self) -> list[Self]:
         """ rootからこれまでのReplyをrootから順にリストにして返す
         """
-        _list: list[Reply] = []
+        _list: list[Self] = []
         node = self
         while not node.is_root:
             _list.append(node)
@@ -84,7 +100,7 @@ class Reply(BaseModel):
         _list.append(node)
         return _list[::-1]
 
-    def generate_next(self, context_size: int | None = None) -> "Reply":
+    def generate_next(self, context_size: int | None = None) -> Self:
         """ 破壊的メソッド
         """
         if context_size is not None:
@@ -105,13 +121,67 @@ class Reply(BaseModel):
         return reply
     
     @staticmethod
-    def generate_root(question: str) -> "Reply":
+    def generate_root(question: str) -> Self:
         return Reply(parent=None, chara=Chara.INTERVIEWER, id=str(uuid.uuid4()), comment=question, comment_vector=vectorize(question), children=[])
 
     def debug(self, indent: int = 0):
         print(f"{' ' * indent}{self.chara.ja}: {self.comment}")
         for child in self.children:
             child.debug(indent=indent+2)
+    
+    def generate_search_function(self):
+
+        # 検索用にデータを準備する
+        ids = []
+        vectors = []
+        charas = []
+        id_map: dict[str, Reply] = {}
+        for reply in self.bfs():
+            ids.append(reply.id)
+            vectors.append(reply.comment_vector)
+            charas.append(reply.chara)
+            id_map[reply.id] = reply
+        ids = np.array(ids, dtype=str)
+        vectors = np.array(vectors)
+        charas = np.array(charas)
+
+        def search(body: str, size: int = 10, allows: list[Chara] = [Chara.CANDIDATE, Chara.INTERVIEWER]) -> list[Self]:
+            vector = vectorize(body)
+
+            use_indices = np.where(functools.reduce(lambda x, y: x | y, [charas == allow for allow in allows]))
+            scores = np.dot(vectors[use_indices], vector)
+            indices = np.argsort(scores)[::-1][:size]
+            return [id_map[ids[use_indices][i]] for i in indices]
+    
+        return search
+
+    def bfs(self) -> Generator[Self, None, None]:
+        queue = [self]
+        while queue:
+            node = queue.pop(0)
+            yield node
+            queue.extend(node.children)
+    
+    def save(self, path: Path):
+        with open(path, '+w') as f:
+            f.write(self.model_dump_json())
+    
+
+    @staticmethod
+    def load(path: Path) -> Self:
+        with open(path, 'r') as f:
+            j = json.load(f)
+
+        root = Reply.model_validate(j)
+
+        # parentが参照ではなく、idで指定されているので、idから参照を復元する
+        id_map: dict[str, Reply] = {}
+        for reply in root.bfs():
+            id_map[reply.id] = reply
+            if reply.parent is not None:
+                reply.parent = id_map[reply.id]
+        
+        return root
 
 def vectorize(text: str, fake=False) -> list[float]:
     if fake:
@@ -134,5 +204,13 @@ def generate_reply_tree(path: Path, start: str, size: int = 100) -> Reply:
     return root
 
 if __name__ == '__main__':
-    root = generate_reply_tree(Path("sample.json"), random.choice(start_words), size=100)
-    root.debug()
+    # データ生成
+    # root = generate_reply_tree(Path("sample2.json"), random.choice(start_words), size=3)
+    # root.debug()
+
+    # データ検索
+    root = Reply.load(Path("ai/sample2.json"))
+    search = root.generate_search_function()
+    results = search("私は学生です", allows=[Chara.CANDIDATE])
+    for results in results:
+        print(results)
