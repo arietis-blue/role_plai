@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useState, useRef } from 'react';
+import SpeechInput from '../components/speechinput';
 
 interface Message {
   text: string;
@@ -60,6 +61,7 @@ const Home: React.FC = () => {
             placeholder="メッセージを入力"
             className="shadow appearance-none border rounded w-full py-2 px-3 text-grey-darker"
           />
+          <SpeechInput onTranscript={(transcript: string) => setInputText(transcript)} />
           <button
             onClick={sendMessage}
             className="ml-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
