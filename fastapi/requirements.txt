@@ -3,3 +3,9 @@ uvicorn[standard]
 python-socketio
 sqlalchemy
 psycopg2-binary
+fire
+openai
+loguru
+python-dotenv
+tqdm
+numpy

@@ -1,6 +1,6 @@
 from fire import Fire
 from datetime import datetime
-from data import generate_reply_tree, Reply, Chara
+from .data import generate_reply_tree, Reply, Chara
 from pathlib import Path
 from loguru import logger
 
@@ -31,6 +31,9 @@ def search(path: str, query: str, size: int=5, only_candidate: bool=False, only_
     replies = search(query, size=size, allows=allows)
     for reply in replies:
         logger.success(str(reply))
+
+    return replies
+
 
 if __name__ == "__main__":
     Fire({
