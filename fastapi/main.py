@@ -39,11 +39,14 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
     await websocket.accept()
     while True:
         data = await websocket.receive_text()
-        responses = search(path=data_path, query=data, size=3, only_interviewer=True)
-        response = random.choice(responses)
-        # responseの頭に含まれる「面接官: 」を取り除く
-        response  = str(response).replace("面接官: ", "")
-        await websocket.send_text(f"{response}")
+        # 候補者の発言に似たテキストを検索
+        similar_candidate_replies = search(path=data_path, query=data, size=3, only_candidate=True)
+        similar_students_reply = random.choice(similar_candidate_replies)
+        # そのテキストに対応する返答を取得
+        interviewer_response_content = random.choice(similar_students_reply.children).comment
+        # interviewer_response_contentの頭に含まれる「面接官: 」を取り除く
+        interviewer_response_content  = interviewer_response_content.replace("面接官: ", "")
+        await websocket.send_text(f"{interviewer_response_content}")
 
 
 @app.post("/responses/", response_model=HumanResponse)
