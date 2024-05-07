@@ -1,0 +1,50 @@
+{
+    "name": "devcontainer-python",
+    "dockerComposeFile": ["docker-compose.yml"],
+    "service": "main",
+    "runServices": ["main"],
+    "mounts": [
+      {
+        "type": "volume",
+        "source": "poetry-cache",
+        "target": "/home/vscode/.cache/pypoetry"
+      },
+      {
+        "type": "volume",
+        "source": "venv-cache",
+        "target": "${containerWorkspaceFolder}/.venv"
+      }
+    ],
+    "workspaceFolder": "/workspace/fastapi",
+    "features": {
+      "ghcr.io/devcontainers-contrib/features/poetry": {
+        "version": "latest"
+      },
+      "ghcr.io/devcontainers/features/aws-cli:1": {
+        "version": "latest"
+      },
+      "ghcr.io/devcontainers/features/node:1": {}
+    },
+    "postAttachCommand": "sudo chown -R vscode /home/vscode/.cache/pypoetry ${containerWorkspaceFolder}/.venv && poetry config virtualenvs.in-project true && poetry install",
+    "remoteUser": "vscode",
+    "customizations": {
+      "vscode": {
+        "settings": {
+          "python.defaultInterpreterPath": "/workspace/.venv/bin/python",
+        "git.openRepositoryInParentFolders": "always"
+        },
+        "extensions": [
+          "ms-python.python",
+          "ms-python.vscode-pylance",
+          "streetsidesoftware.code-spell-checker",
+          "charliermarsh.ruff",
+          "tamasfe.even-better-toml",
+          "ms-azuretools.vscode-docker",
+          "github.vscode-pull-request-github",
+          "ms-vsliveshare.vsliveshare",
+          "mhutchie.git-graph",
+          "GitHub.copilot"
+        ]
+      }
+    }
+  }
