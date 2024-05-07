@@ -5,8 +5,10 @@ from pydantic import BaseModel
 
 import random
 
+from src.cli import search
 
 app = FastAPI()
+
 
 class FollowUpQuestionCreate(BaseModel):
     follow_up_question: str
@@ -33,21 +35,16 @@ def get_db():
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)):
+    data_path = "data/20240428160810.json"
     await websocket.accept()
     while True:
         data = await websocket.receive_text()
-        # 受け取ったtextが想定回答と一致しているものを取得
-        db_response = db.query(HumanResponses).filter(HumanResponses.expected_response == data).first()
-        if db_response:
-            if db_response.follow_up_questions:
-                # follow_up_questionsのリストからランダムに一つ選択して送信
-                follow_up_question = random.choice(db_response.follow_up_questions)
-                await websocket.send_text(follow_up_question.follow_up_question)
-            else:
-                # 想定回答と一致しているがDBに深掘り質問のデータがない場合
-                await websocket.send_text("No follow-up questions available.")
-        else:
-            await websocket.send_text(f"{data}")
+        responses = search(path=data_path, query=data, size=3, only_interviewer=True)
+        response = random.choice(responses)
+        # responseの頭に含まれる「面接官: 」を取り除く
+        response  = str(response).replace("面接官: ", "")
+        await websocket.send_text(f"{response}")
+
 
 @app.post("/responses/", response_model=HumanResponse)
 def create_response(response: HumanResponseCreate, db: Session = Depends(get_db)):
