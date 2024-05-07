@@ -1,0 +1,32 @@
+{
+    "cSpell.words": [ // スペルチェッカーの追加辞書
+      "devcontainer",
+      "chara",
+      "pydantic",
+      "openai",
+      "loguru",
+      "dotenv",
+      "tqdm",
+      "vectorize",
+    ],
+    "files.exclude": {
+      // 余計なファイルを表示しないようにする
+      "**/__pycache__": true,
+      "**/.mypy_cache": true,
+      "**/.pytest_cache": true
+    },
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "[python]": {
+      "editor.formatOnSave": true,
+      "editor.codeActionsOnSave": {
+        "source.fixAll": "always",
+        "source.organizeImports": "always"
+      },
+      "editor.defaultFormatter": "charliermarsh.ruff"
+    },
+    "extensions.ignoreRecommendations": false, // 推奨のエクステンションを必ず表示する
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.typeCheckingMode": "basic" 
+  }
+  
