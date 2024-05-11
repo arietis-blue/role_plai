@@ -4,6 +4,8 @@ import SpeechInput from '../components/speechinput';
 
 interface Message {
   text: string;
+  audio?: string;
+  visemes?: any;
   fromServer: boolean;
 }
 
@@ -25,10 +27,12 @@ const Home: React.FC = () => {
     websocket.current = new WebSocket('ws://localhost:8000/ws');
 
     websocket.current.onmessage = (event: MessageEvent) => {
-      console.log('Message from server:', event.data);
-      setMessages(prevMessages => [...prevMessages, { text: event.data, fromServer: true }]);
-      if (speechSynth && !speechSynth.speaking) {
-        const utterance = new SpeechSynthesisUtterance(event.data);
+      const data = JSON.parse(event.data);
+      console.log('Message from server:', data);
+      setMessages(prevMessages => [...prevMessages, { ...data, fromServer: true }]);
+
+      if (speechSynth && !speechSynth.speaking && data.text) {
+        const utterance = new SpeechSynthesisUtterance(data.text);
         speechSynth.speak(utterance);
       }
     };

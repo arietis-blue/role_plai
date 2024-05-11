@@ -2,7 +2,7 @@ from fastapi import FastAPI, WebSocket, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import SessionLocal, HumanResponses, AIFollowUpQuestions
 from pydantic import BaseModel
-import httpx
+from httpx import AsyncClient
 import logging
 
 import random
@@ -39,15 +39,67 @@ def get_db():
 async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)):
     data_path = "data/20240428160810.json"
     await websocket.accept()
-    while True:
-        data = await websocket.receive_text()
-        # 候補者の発言に似たテキストを検索
-        similar_candidate_replies = search(path=data_path, query=data, size=3, only_candidate=True)
-        similar_students_reply = random.choice(similar_candidate_replies)
-        # そのテキストに対応する返答を取得
-        interviewer_response_content = random.choice(similar_students_reply.children).comment
-        await websocket.send_text(f"{interviewer_response_content}")
+    async with AsyncClient() as client:
+        while True:
+            data = await websocket.receive_text()
+            # 候補者の発言に似たテキストを検索
+            similar_candidate_replies = search(path=data_path, query=data, size=3, only_candidate=True)
+            if not similar_candidate_replies:
+                await websocket.send_text(json.dumps({'text': 'No similar replies found.', 'fromServer': True}))
+                continue
 
+            similar_students_reply = random.choice(similar_candidate_replies)
+            interviewer_response_content = random.choice(similar_students_reply.children).comment
+            lambda_url = "https://iv3ucg3m4pi4qpu2imavev5leq0amrdu.lambda-url.us-east-1.on.aws/"
+            response = await client.post(lambda_url, json={'text': interviewer_response_content})
+            
+            if response.status_code == 200:
+                lambda_response = response.json()
+                message = {
+                    'text': interviewer_response_content,
+                    'audio': lambda_response.get('audio'),
+                    'visemes': lambda_response.get('visemes'),
+                    'fromServer': True
+                }
+                await websocket.send_json(message)
+            else:
+                await websocket.send_json({'text': 'Error calling Lambda function', 'fromServer': True})
+            # await websocket.send_text(f"{interviewer_response_content}")
+
+# @app.websocket("/ws")
+# async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)):
+#     data_path = "data/20240428160810.json"
+#     await websocket.accept()
+
+#     async with httpx.AsyncClient() as client:
+#         while True:
+#             data = await websocket.receive_text()
+#             # 候補者の発言に似たテキストを検索
+#             similar_candidate_replies = search(path=data_path, query=data, size=3, only_candidate=True)
+#             similar_students_reply = random.choice(similar_candidate_replies)
+#             # そのテキストに対応する返答を取得
+#             interviewer_response_content = random.choice(similar_students_reply.children).comment
+
+#             # Lambda関数を呼び出して音声とVisemeデータを生成
+#             response = await client.post(
+#                 "https://6h63ipcwp8.execute-api.us-east-1.amazonaws.com/role-ai/",
+#                 json={"text": interviewer_response_content},
+#                 headers={"x-api-key": "JwPondCU4G8q7EXpGB0Gs1y3nzYJ27J44Efl0OW7"}
+#             )
+
+#             if response.status_code == 200:
+#                 # 音声とVisemeデータを含むレスポンスをクライアントに送信
+#                 audio_and_viseme_data = response.json()
+#                 print(audio_and_viseme_data)
+#                 await websocket.send_json({
+#                     "text": interviewer_response_content,
+#                     "audio": audio_and_viseme_data['audio'],
+#                     "visemes": audio_and_viseme_data['visemes']
+#                 })
+#             else:
+#                 # エラー応答をクライアントに送信
+#                 print("Error response from Lambda:", response.status_code, response.text)  # エラー情報をログ出力
+#                 await websocket.send_text("Error retrieving audio and viseme data")
 
 @app.post("/responses/", response_model=HumanResponse)
 def create_response(response: HumanResponseCreate, db: Session = Depends(get_db)):
@@ -82,7 +134,7 @@ class SynthesisRequest(BaseModel):
 @app.post("/synthesize")
 async def synthesize_text(request: SynthesisRequest):
     lambda_url = "https://6h63ipcwp8.execute-api.us-east-1.amazonaws.com/role-ai/"
-    api_key = ""  # APIキーをここに設定
+    api_key = "JwPondCU4G8q7EXpGB0Gs1y3nzYJ27J44Efl0OW7"  # APIキーをここに設定
 
     headers = {
         "x-api-key": api_key,  # API GatewayでAPIキーの使用を要求している場合
